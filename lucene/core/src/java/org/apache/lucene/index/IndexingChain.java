@@ -562,8 +562,11 @@ final class IndexingChain implements Accountable {
     // analyzer is free to reuse TokenStream across fields
     // (i.e., we cannot have more than one TokenStream
     // running "at once"):
+    //[cryo] 这里分成两个阶段来进行处理，在第一阶段找到/存储域处理对象，目前看来有这样两个原因：
+    //[cryo] 1. 一个线程可以连续处理多个文档，而每个文档的域和处理方式大致相同，所以复用+缓存的方式比每次创建更高效
+    //[cryo] 2.一个文档中一个域是可以同时存储多个值的，而一个多值的域需要同时处理(因为 tokenStream 需要复用)
     termsHash.startDocument();
-    startStoredFields(docID);
+    startStoredFields(docID);   //[cryo: 没什么大用，跟文档处理有关，不用理会]
     try {
       // 1st pass over doc fields – verify that doc schema matches the index schema
       // build schema for each unique doc field
@@ -574,6 +577,7 @@ final class IndexingChain implements Accountable {
             getOrAddPerField(
                 field.name(), false
                 /* we never add reserved fields during indexing should be done during DWPT setup*/ );
+                //[cryo] 上面这段是核心逻辑，查找/缓存这个域的域处理对象（从线程角度）
         if (pf.reserved != isReserved) {
           throw new IllegalArgumentException(
               "\""
@@ -586,7 +590,7 @@ final class IndexingChain implements Accountable {
           pf.reset(docID);
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
-        docFields[docFieldIdx++] = pf;
+        docFields[docFieldIdx++] = pf;    //[cryo] 这里保存每一篇文档自己的 fields 数组
         updateDocFieldSchema(field.name(), pf.schema, fieldType);
       }
       // For each field, if it's the first time we see this field in this segment,
@@ -606,6 +610,7 @@ final class IndexingChain implements Accountable {
       // also count the number of unique fields indexed with postings
       docFieldIdx = 0;
       for (IndexableField field : document) {
+        //[cryo] 从这里开始，对每一个 field 开始建立倒排索引，是一个核心逻辑
         if (processField(docID, field, docFields[docFieldIdx])) {
           fields[indexedFieldCount] = docFields[docFieldIdx];
           indexedFieldCount++;
@@ -616,9 +621,11 @@ final class IndexingChain implements Accountable {
       if (hasHitAbortingException == false) {
         // Finish each indexed field name seen in the document:
         for (int i = 0; i < indexedFieldCount; i++) {
+          //[cryo] 结束对每一个field的处理，其中重要的一步就是计算每个域的得分 Similarity
           fields[i].finish(docID);
         }
-        finishStoredFields();
+        //[cryo] 结束处理当前文档
+        finishStoredFields(); 
         // TODO: for broken docs, optimize termsHash.finishDocument
         try {
           termsHash.finishDocument(docID);
@@ -725,7 +732,8 @@ final class IndexingChain implements Accountable {
     IndexableFieldType fieldType = field.fieldType();
     boolean indexedField = false;
 
-    // Invert indexed fields
+    // Invert indexed fields      
+    //[cryo]倒排分析域过程，将一个个 field 拆分出一个个 token（创建倒排索引)
     if (fieldType.indexOptions() != IndexOptions.NONE) {
       if (pf.first) { // first time we see this field in this doc
         pf.invert(docID, field, true);
@@ -737,6 +745,7 @@ final class IndexingChain implements Accountable {
     }
 
     // Add stored fields
+    //[cryo] 域存储
     if (fieldType.stored()) {
       StoredValue storedValue = field.storedValue();
       if (storedValue == null) {
@@ -776,6 +785,7 @@ final class IndexingChain implements Accountable {
    * FieldType}, and creates a new {@link PerField} if this field name wasn't seen yet.
    */
   private PerField getOrAddPerField(String fieldName, boolean reserved) {
+    //[cryo] 按位与来求出在哈希表中的位置，既保证不越界又保证运算求职的高效
     final int hashPos = fieldName.hashCode() & hashMask;
     PerField pf = fieldHash[hashPos];
     while (pf != null && pf.fieldName.equals(fieldName) == false) {
@@ -797,6 +807,7 @@ final class IndexingChain implements Accountable {
       fieldHash[hashPos] = pf;
       totalFieldCount++;
       // At most 50% load factor:
+      //[cryo] 哈希表负载因子 load factor，超过时为避免频繁哈希冲突，建议重新建立hash
       if (totalFieldCount >= fieldHash.length / 2) {
         rehash();
       }
@@ -1177,10 +1188,10 @@ final class IndexingChain implements Accountable {
 
       switch (field.invertableType()) {
         case BINARY:
-          invertTerm(docID, field, first);
+          invertTerm(docID, field, first);    //[cryo] 域以二进制形式反转
           break;
         case TOKEN_STREAM:
-          invertTokenStream(docID, field, first);
+          invertTokenStream(docID, field, first); //[ceyo] 域以token-stream形式反转
           break;
         default:
           throw new AssertionError();
@@ -1200,9 +1211,10 @@ final class IndexingChain implements Accountable {
         // reset the TokenStream to the first token
         stream.reset();
         invertState.setAttributeSource(stream);
-        termsHashPerField.start(field, first);
+        termsHashPerField.start(field, first);  //[cryo]得到 token 各种属性信息，为索引做准备
+                                                //[cryo] 可以取看 FreqProxTermsWriterPerField || TermVectorsConsumerPerField
 
-        while (stream.incrementToken()) {
+        while (stream.incrementToken()) {     //[cryo] 不断获取 TokenStream 的下一个 token(分词)
 
           // If we hit an exception in stream.next below
           // (which is fairly common, e.g. if analyzer
@@ -1284,7 +1296,9 @@ final class IndexingChain implements Accountable {
           // corrupt and should not be flushed to a
           // new segment:
           try {
-            termsHashPerField.add(invertState.termAttribute.getBytesRef(), docID);
+            //[cryo] 将 token 写入,涉及到 charPool, bytePool, intPool 的管理，是核心逻辑
+            //[cryo] 暂时认为这里的 termsHashPerField 的类型是 FreqProxTermsWriterPerField
+            termsHashPerField.add(invertState.termAttribute.getBytesRef(), docID);    
           } catch (MaxBytesLengthExceededException e) {
             byte[] prefix = new byte[30];
             BytesRef bigTerm = invertState.termAttribute.getBytesRef();
@@ -1351,13 +1365,13 @@ final class IndexingChain implements Accountable {
                 + field.name()
                 + " did not");
       }
-      invertState.setAttributeSource(null);
+      invertState.setAttributeSource(null);   //[cryo] 其实就是重置 invertedState 的状态
       invertState.position++;
       invertState.length++;
-      termsHashPerField.start(field, first);
+      termsHashPerField.start(field, first);  //[cryo]根据 Token 各种属性的类型构造保存属性的对象
       invertState.length = Math.addExact(invertState.length, 1);
       try {
-        termsHashPerField.add(binaryValue, docID);
+        termsHashPerField.add(binaryValue, docID);    //[cryo] 在这里将数据存起来
       } catch (MaxBytesLengthExceededException e) {
         byte[] prefix = new byte[30];
         System.arraycopy(binaryValue.bytes, binaryValue.offset, prefix, 0, 30);

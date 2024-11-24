@@ -197,9 +197,11 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     // termID=" + termID);
     if (termID >= 0) { // New posting
       // Init stream slices
-      initStreamSlices(termID, docID);
+      //[cryo] 第一次新加token，分配完 intPool, bytePool后FrqProxTermsWriterPerField.newTerm 
+      initStreamSlices(termID, docID);  
     } else {
-      termID = positionStreamSlice(termID, docID);
+      //[cryo]非首次遇到这个token，被调用函数会FrqProxTermsWriterPerField.addTerm
+      termID = positionStreamSlice(termID, docID);  
     }
     if (doNextCall) {
       nextPerField.add(postingsArray.textStarts[termID], docID);

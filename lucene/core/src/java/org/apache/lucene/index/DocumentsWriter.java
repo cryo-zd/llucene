@@ -421,6 +421,7 @@ final class DocumentsWriter implements Closeable, Accountable {
       // waits for all DWPT to be released:
       ensureOpen();
       try {
+        //[cryo]  核心逻辑，开始进行一篇文档的处理
         seqNo =
             dwpt.updateDocuments(docs, delNode, flushNotifications, numDocsInRAM::incrementAndGet);
       } finally {

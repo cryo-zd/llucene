@@ -260,9 +260,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
           // vs non-aborting exceptions):
           reserveOneDoc();
           try {
+            //[cryo] 核心逻辑，从这里开始进入一篇文档的索引建立过程
             indexingChain.processDocument(numDocsInRAM++, doc);
           } finally {
-            onNewDocOnRAM.run();
+            onNewDocOnRAM.run();  //[cryo] 增加文档计数，不是核心逻辑
           }
         }
         final int numDocs = numDocsInRAM - docsInRamBefore;
