@@ -34,12 +34,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.DocValuesFormat;
-import org.apache.lucene.codecs.FieldInfosFormat;
-import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
@@ -251,6 +247,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /** Parse the generation off the segments file name and return it. */
+  //从 SEGMENTS_N 中解析出 N
   public static long generationFromSegmentsFileName(String fileName) {
     if (fileName.equals(OLD_SEGMENTS_GEN)) {
       throw new IllegalArgumentException(
@@ -297,6 +294,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       Directory directory, String segmentFileName, int minSupportedMajorVersion)
       throws IOException {
 
+    //从 segments_N 中读出 N
     long generation = generationFromSegmentsFileName(segmentFileName);
     // System.out.println(Thread.currentThread() + ": SegmentInfos.readCommit " + segmentFileName);
     try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName, IOContext.READ)) {
@@ -365,6 +363,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       infos.generation = generation;
       infos.lastGeneration = generation;
       infos.luceneVersion = luceneVersion;
+      //这里读取并构造出所有的 sgementsInfos，是一段核心逻辑
       parseSegmentInfos(directory, input, infos, format);
       return infos;
 
@@ -406,7 +405,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
+      //[cryo] Codec 的作用:Encodes/decodes an inverted index segment.
+      //[cryo] 这里的 Codec 是一个抽象类，具体子类是什么，暂时还未得知
       Codec codec = readCodec(input);
+      //[cryo] 加载每一个 SegmentInfo，但是怎么加载目前还不知道! TODO
       SegmentInfo info =
           codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READ);
       info.setCodec(codec);

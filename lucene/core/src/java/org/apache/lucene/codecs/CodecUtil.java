@@ -664,6 +664,7 @@ public final class CodecUtil {
   }
 
   /** read int value from header / footer with big endian order */
+  //大端序：低位地址存放数据高位字节
   public static int readBEInt(DataInput in) throws IOException {
     return ((in.readByte() & 0xFF) << 24)
         | ((in.readByte() & 0xFF) << 16)

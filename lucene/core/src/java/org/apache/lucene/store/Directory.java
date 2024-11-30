@@ -17,10 +17,8 @@
 package org.apache.lucene.store;
 
 import java.io.Closeable;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.NoSuchFileException;
-import java.util.Collection; // for javadocs
+import java.util.Collection;
 import java.util.Set;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.IOUtils;
@@ -153,6 +151,7 @@ public abstract class Directory implements Closeable {
    * @throws IOException in case of I/O error
    */
   public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
+    //这里对 IO 操作做了一个 Buffer 缓冲加速
     return new BufferedChecksumIndexInput(openInput(name, context));
   }
 

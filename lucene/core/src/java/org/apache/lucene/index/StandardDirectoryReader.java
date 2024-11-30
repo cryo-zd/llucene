@@ -74,6 +74,9 @@ public final class StandardDirectoryReader extends DirectoryReader {
       final IndexCommit commit,
       Comparator<LeafReader> leafSorter)
       throws IOException {
+        //这里是 IndexReader读取索引的一个关键点入口
+        //创建匿名子类并调用匿名子类对象的 run 方法，然后匿名字类还重写了其中的 doBody 函数
+        //匿名对象的 run 方法中，当 commit != null 的时候，会调用 doBody 函数
     return new SegmentInfos.FindSegmentsFile<DirectoryReader>(directory) {
       @Override
       protected DirectoryReader doBody(String segmentFileName) throws IOException {
