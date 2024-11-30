@@ -77,6 +77,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
         //这里是 IndexReader读取索引的一个关键点入口
         //创建匿名子类并调用匿名子类对象的 run 方法，然后匿名字类还重写了其中的 doBody 函数
         //匿名对象的 run 方法中，当 commit != null 的时候，会调用 doBody 函数
+        //[cryo] 24/11/30重新走读发现 commit == null
     return new SegmentInfos.FindSegmentsFile<DirectoryReader>(directory) {
       @Override
       protected DirectoryReader doBody(String segmentFileName) throws IOException {
@@ -89,6 +90,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
         }
         SegmentInfos sis =
             SegmentInfos.readCommit(directory, segmentFileName, minSupportedMajorVersion);
+        //[cryo]根据生成的 SegmentInfos 打开各个段，并生成 ReadOnlyDirectoryReader
         final SegmentReader[] readers = new SegmentReader[sis.size()];
         boolean success = false;
         try {
@@ -98,6 +100,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
           }
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
+          //[cryo]初始化生成的 ReadOnlyDirectoryReader，对打开的多个 SegmentReader 中的文档编号
           DirectoryReader reader =
               new StandardDirectoryReader(directory, readers, null, sis, leafSorter, false, false);
           success = true;

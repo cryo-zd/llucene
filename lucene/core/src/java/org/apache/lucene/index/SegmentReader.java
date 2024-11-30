@@ -93,6 +93,8 @@ public final class SegmentReader extends CodecReader {
     // We pull liveDocs/DV updates from disk:
     this.isNRT = false;
 
+    //这里的 coreReader 是一种共享机制
+    //但是 coreReader 是读取一个 segment 的核心，核心逻辑
     core = new SegmentCoreReaders(si.info.dir, si, context);
     segDocValues = new SegmentDocValues();
 

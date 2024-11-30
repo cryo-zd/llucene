@@ -107,6 +107,7 @@ public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
     }
   }
 
+  //[cryo]读出 segmentinfo 的相关属性(包括其中的 sortedfields 信息)
   private SegmentInfo parseSegmentInfo(
       Directory dir, DataInput input, String segment, byte[] segmentID) throws IOException {
     final Version version = Version.fromBits(input.readInt(), input.readInt(), input.readInt());
@@ -140,6 +141,7 @@ public class Lucene99SegmentInfoFormat extends SegmentInfoFormat {
       SortField[] sortFields = new SortField[numSortFields];
       for (int i = 0; i < numSortFields; i++) {
         String name = input.readString();
+        //[cryo] 这里的 SortedFieldProvider 抽象类的具体实现可能是: SortedNumericSortedField/SortedSetSortField
         sortFields[i] = SortFieldProvider.forName(name).readSortField(input);
       }
       indexSort = new Sort(sortFields);

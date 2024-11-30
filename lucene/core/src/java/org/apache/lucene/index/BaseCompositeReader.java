@@ -80,6 +80,7 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     this.subReadersList = Collections.unmodifiableList(Arrays.asList(subReaders));
     starts = new int[subReaders.length + 1]; // build starts array
     long maxDoc = 0;
+    //[cryo]lucene中每个段的文档的编号都是从 0 开始的，而一个索引中有多个段，所以需要重新编号，设置 start 偏移数组
     for (int i = 0; i < subReaders.length; i++) {
       starts[i] = (int) maxDoc;
       final IndexReader r = subReaders[i];

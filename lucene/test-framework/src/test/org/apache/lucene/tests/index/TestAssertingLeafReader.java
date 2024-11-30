@@ -46,7 +46,7 @@ public class TestAssertingLeafReader extends LuceneTestCase {
     w.close();
 
     // Now we have index with 1 segment with 2 docs one of which is marked deleted
-
+    //[cryo] IndexReader ---> DirectoryReader ---> StandardDirectoryReader
     IndexReader r = DirectoryReader.open(dir);
     assertEquals(1, r.leaves().size());
     assertEquals(2, r.maxDoc());

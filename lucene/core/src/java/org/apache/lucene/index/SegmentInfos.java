@@ -294,7 +294,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       Directory directory, String segmentFileName, int minSupportedMajorVersion)
       throws IOException {
 
-    //从 segments_N 中读出 N
+    //从 segments_N文件名中读取出 N 的值
     long generation = generationFromSegmentsFileName(segmentFileName);
     // System.out.println(Thread.currentThread() + ": SegmentInfos.readCommit " + segmentFileName);
     try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName, IOContext.READ)) {
@@ -406,9 +406,9 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
       //[cryo] Codec 的作用:Encodes/decodes an inverted index segment.
-      //[cryo] 这里的 Codec 是一个抽象类，具体子类是什么，暂时还未得知
+      //[cryo] 这里的 Codec 是一个抽象类，具体子类是什么，暂时还未得知--->24/11/30 切换到 Lucene99Codec.java类
       Codec codec = readCodec(input);
-      //[cryo] 加载每一个 SegmentInfo，但是怎么加载目前还不知道! TODO
+      //[cryo] 加载每一个 SegmentInfo--->Lucene99SegmentInfoFormat.java.read函数
       SegmentInfo info =
           codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READ);
       info.setCodec(codec);
@@ -803,8 +803,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         Arrays.sort(files2);
         if (!Arrays.equals(files, files2)) {
           // listAll() is weakly consistent, this means we hit "concurrent modification exception"
+          //[cryo]并发控制，弱一致性，所以这里读了两次然后判断是否相等
           continue;
         }
+        //找到最新的 segment_N
         gen = getLastCommitGeneration(files);
 
         if (infoStream != null) {

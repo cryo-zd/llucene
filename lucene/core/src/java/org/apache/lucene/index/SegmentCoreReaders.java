@@ -109,6 +109,8 @@ final class SegmentCoreReaders {
 
       segment = si.info.name;
 
+      //[cryo]一个segment中的 field 处理:加载所有的 fieldInfo
+      //FieldInfosFormat是一个抽象类，这里暂时追踪到 Lucene90FieldInfosFormat.java类
       coreFieldInfos = codec.fieldInfosFormat().read(cfsDir, si.info, "", context);
 
       final SegmentReadState segmentReadState =
