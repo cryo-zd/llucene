@@ -93,6 +93,7 @@ public final class ConstantScoreQuery extends Query {
       this.theScore = theScore;
     }
 
+    //ConstScoreQuery 的 scorer 获取: ConstScoreScorer
     @Override
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {

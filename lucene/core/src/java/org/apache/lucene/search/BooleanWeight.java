@@ -590,6 +590,7 @@ final class BooleanWeight extends Weight {
       scorers.put(occur, new ArrayList<>());
     }
 
+    //遍历每一个子句，生成每一个子 Scorer 对象
     for (WeightedBooleanClause wc : weightedClauses) {
       Weight w = wc.weight;
       BooleanClause c = wc.clause;
@@ -631,6 +632,7 @@ final class BooleanWeight extends Weight {
       scorers.get(Occur.SHOULD).clear();
     }
 
+    //生成 Scorer 对象树，同时生成 SumScorer 对象树
     return new Boolean2ScorerSupplier(this, scorers, scoreMode, minShouldMatch);
   }
 }

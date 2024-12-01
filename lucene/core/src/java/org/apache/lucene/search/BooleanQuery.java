@@ -275,6 +275,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+    //BooleanQuery 返回一个 BooleanWeight
     return new BooleanWeight(this, searcher, scoreMode, boost);
   }
 

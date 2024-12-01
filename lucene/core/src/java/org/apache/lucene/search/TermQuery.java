@@ -76,6 +76,8 @@ public class TermQuery extends Query {
         // allocations in case default BM25Scorer is used.
         // See: https://github.com/apache/lucene/issues/12297
         if (scoreMode.needsScores()) {
+          //TermWeight 构造函数的中的核心逻辑，在这里计算 weight,计算框架在抽象类 TFIDFSimilarity
+          //idf 实际计算逻辑在 ClassicSimilarity
           this.simScorer = similarity.scorer(boost, collectionStats, termStats);
         } else {
           // Assigning a dummy scorer as this is not expected to be called since scores are not
@@ -160,6 +162,7 @@ public class TermQuery extends Query {
       };
     }
 
+    //TermQuery.TermWeight 的 Scorer 获取入口
     @Override
     public Scorer scorer(LeafReaderContext context) throws IOException {
       ScorerSupplier supplier = scorerSupplier(context);
@@ -278,6 +281,7 @@ public class TermQuery extends Query {
       termState = this.perReaderTermState;
     }
 
+    //TermQuery 的 weight 计算会返回一个 TermWeight 对象
     return new TermWeight(searcher, scoreMode, boost, termState);
   }
 

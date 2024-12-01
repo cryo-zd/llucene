@@ -254,6 +254,7 @@ final class BooleanScorer extends BulkScorer {
     }
 
     docIdStreamView.base = base;
+    //注意这里的 Collector.collect 函数，收集文档
     collector.collect(docIdStreamView);
 
     Arrays.fill(matching, 0L);

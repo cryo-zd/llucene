@@ -60,6 +60,7 @@ public class ClassicSimilarity extends TFIDFSimilarity {
   /** Implemented as <code>log((docCount+1)/(docFreq+1)) + 1</code>. */
   @Override
   public float idf(long docFreq, long docCount) {
+    //这里是 TermQuery 的 idf 的实际计算公式
     return (float) (Math.log((docCount + 1) / (double) (docFreq + 1)) + 1.0);
   }
 

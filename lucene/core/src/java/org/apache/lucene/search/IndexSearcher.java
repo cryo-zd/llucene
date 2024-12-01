@@ -29,10 +29,8 @@ import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
@@ -42,7 +40,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
-import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
@@ -661,7 +658,11 @@ public class IndexSearcher {
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
     final C firstCollector = collectorManager.newCollector();
+    //[cryo]重写 query 对象树
+    //TermQuery 重写后直接返回 termQuery
+    //MultiTermQuery 会有两种重写方式:[1]DocidSet [2]BooleanQuery--SHOULD(或关系)
     query = rewrite(query, firstCollector.scoreMode().needsScores());
+    //[cryo]创建weight对象树
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
     return search(weight, collectorManager, firstCollector);
   }
@@ -692,10 +693,12 @@ public class IndexSearcher {
         final C collector = collectors.get(i);
         listTasks.add(
             () -> {
+              //一个具体的搜索逻辑
               search(Arrays.asList(leaves), weight, collector);
               return collector;
             });
       }
+      //搜索并行化加速
       List<C> results = taskExecutor.invokeAll(listTasks);
       return collectorManager.reduce(results);
     }
@@ -726,6 +729,7 @@ public class IndexSearcher {
     for (LeafReaderContext ctx : leaves) { // search each subreader
       final LeafCollector leafCollector;
       try {
+        //创建文档号收集器
         leafCollector = collector.getLeafCollector(ctx);
       } catch (
           @SuppressWarnings("unused")
@@ -734,12 +738,14 @@ public class IndexSearcher {
         // continue with the following leaf
         continue;
       }
+      //创建scorer 对象树，以及创建 sumScorer 用来合并倒排表
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
         if (queryTimeout != null) {
           scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
         }
         try {
+          //合并倒排表，收集文档号
           scorer.score(leafCollector, ctx.reader().getLiveDocs());
         } catch (
             @SuppressWarnings("unused")
