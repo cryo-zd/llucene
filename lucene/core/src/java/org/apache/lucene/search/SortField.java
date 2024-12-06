@@ -50,6 +50,11 @@ import org.apache.lucene.util.NumericUtils;
  * the same data is stored in these term index and doc values.
  *
  * <p>Created: Feb 11, 2004 1:25:29 PM
+ * 
+ * [cryo] 在 Lucene 中，SortField 类是实现文档排序的核心类。它用于定义文档按照何种规则进行排序
+ * SortField类常与查询操作紧密集合，在执行查询后，可以使用 sortField 来对查询结果进行排序。例如，在进行一个
+ * 全文搜索后，通过 SortField 可以按照文档的相关行得分进行排序。同时也可以结合其它字段进行二级排序，
+ * 比如在相关性得分相同的情况下，按照文档的发布日期进行排序
  *
  * @since lucene 1.4
  * @see Sort

@@ -28,6 +28,7 @@ import org.apache.lucene.util.BytesRef;
 /**
  * Represents a single field for indexing. IndexWriter consumes Iterable&lt;IndexableField&gt; as a
  * document.
+ * [cryo]抽象建模 Document 中的 field
  *
  * @lucene.experimental
  */
@@ -49,6 +50,7 @@ public interface IndexableField {
    *     good performance. Note: the passed-in type may be inappropriate, for example if you mix up
    *     different types of Fields for the same field name. So it's the responsibility of the
    *     implementation to check.
+   * [cryo] 注意这里复用了 TokenStream
    * @return TokenStream value for indexing the document. Should always return a non-null value if
    *     the field is to be indexed
    */

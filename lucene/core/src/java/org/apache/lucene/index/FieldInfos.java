@@ -40,6 +40,7 @@ import org.apache.lucene.util.Version;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
+ * [cryo] 这里聚集管理了所有的 FiledInfo，"every segement has a fieldinfo file"
  *
  * @lucene.experimental
  */
@@ -453,6 +454,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
      */
     synchronized int addOrGet(FieldInfo fi) {
       String fieldName = fi.getName();
+      //软删除 --- 逻辑删除
       verifySoftDeletedFieldName(fieldName, fi.isSoftDeletesField());
       verifyParentFieldName(fieldName, fi.isParentField());
       Integer fieldNumber = nameToNumber.get(fieldName);
@@ -821,6 +823,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
      * exist in this Builder. Also adds a new field with its schema options to the global
      * FieldNumbers if the field doesn't exist globally in the index. The field number is reused if
      * possible for consistent field numbers across segments.
+     * 
+     * [cryo] 这一段解释是理解源码 FieldInfos & FieldInfo 逻辑关系的核心
+     * 可以将 FieldInfos 理解成一个 FieldInfo 容器，存储了一篇文档中相关的 FieldInfo 对象
      *
      * <p>If the field already exists: 1) the provided FieldInfo's schema is checked against the
      * existing field and 2) the provided FieldInfo's attributes are added to the existing

@@ -19,6 +19,8 @@ package org.apache.lucene.index;
 /**
  * DocValues types. Note that DocValues is strongly typed, so a field cannot have different types
  * across different documents.
+ * 
+ * [cryo] DocValuesType 类的一个核心作用：保证不同文档下的同一个域有相同的格式
  */
 public enum DocValuesType {
   /** No doc values for this field. */

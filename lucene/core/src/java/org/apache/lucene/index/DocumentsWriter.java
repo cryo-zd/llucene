@@ -381,6 +381,7 @@ final class DocumentsWriter implements Closeable, Accountable {
   }
 
   private boolean preUpdate() throws IOException {
+    //确保 DocumentWriter 处于打开状态(成员变量 closing 的读取)
     ensureOpen();
     boolean hasEvents = false;
     while (flushControl.anyStalledThreads()
@@ -412,6 +413,7 @@ final class DocumentsWriter implements Closeable, Accountable {
       throws IOException {
     boolean hasEvents = preUpdate();
 
+    //一个 IndexWriter 下会有多有线程安全的 DWPT,然后每个 dwpt 内部又会使用 indexchain 来实现索引建立、内存管理
     final DocumentsWriterPerThread dwpt = flushControl.obtainAndLock();
     final DocumentsWriterPerThread flushingDWPT;
     long seqNo;

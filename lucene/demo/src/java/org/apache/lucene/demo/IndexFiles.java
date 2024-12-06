@@ -269,6 +269,7 @@ public class IndexFiles implements AutoCloseable {
       if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
         // New index, so we just add the document (no old document can be there):
         System.out.println("adding " + file);
+        //[cryo] 本轮重点学习 addDocument 接口，从这里进入
         writer.addDocument(doc);
       } else {
         // Existing index (an old copy of this document may have been indexed) so

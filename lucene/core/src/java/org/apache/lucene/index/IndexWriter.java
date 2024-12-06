@@ -1552,9 +1552,11 @@ public class IndexWriter
       final DocumentsWriterDeleteQueue.Node<?> delNode,
       Iterable<? extends Iterable<? extends IndexableField>> docs)
       throws IOException {
+    //[cryo] 确保 IndexWriter 依旧处于open状态(其实就是内部变量 closed 和 closing 的读取)
     ensureOpen();
     boolean success = false;
     try {
+      //[cryo]12/4 暂时先追踪 docWriter.updateDocuments
       final long seqNo = maybeProcessEvents(docWriter.updateDocuments(docs, delNode));
       success = true;
       return seqNo;

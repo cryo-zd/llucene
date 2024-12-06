@@ -30,6 +30,18 @@ import org.apache.lucene.util.IntBlockPool;
  * this class, eg {@link FreqProxTermsWriter} and {@link TermVectorsConsumer}, write their own byte
  * streams under each term.
  */
+/**
+ * [cryo] 摘自《Lucene源码剖析中文版》
+ * 将上面分解出的 token 字符串添加到 PostingList 表中，添加位置等信息的处理会调用接下
+ * 来的 consumer 的方法，如 FreqProxTermsWriterPerField 或 TermVectorsTermsWriterPerField。此方法涉及到访问
+ * 和管理三个内存中的数据池，即 CharBlockPool、IntBlockPool 和 ByteBlockPool。这三个池均采用分片（slice
+ * 或 block）来管理
+ * TermsHashPerField 会维护一个 postingHash 的散列表，用来存储和管理每一个添加的 token 及其位置信息，
+ * 即 RawPostingsList 类。
+ * 
+ * 可以认为 TermsHash 是一个呈上启下的作用, Analyzer 得到的 token 交由 TersHash 管理和处理，然后
+ * 在由对应的 consumer 去建立索引信息
+*/
 abstract class TermsHash {
 
   final TermsHash nextTermsHash;

@@ -178,8 +178,11 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private int numStoredFieldsInDoc;
 
   @Override
+  //startDocument 是空的
   public void startDocument() throws IOException {}
 
+  //finishDocument 更多的是暂时缓存当前即将结束处理的文件的域数量
+  //然后等到必要的时候在多个文件一起 flush 写入
   @Override
   public void finishDocument() throws IOException {
     if (numBufferedDocs == this.numStoredFields.length) {

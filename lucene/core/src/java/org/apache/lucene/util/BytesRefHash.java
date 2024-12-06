@@ -26,6 +26,8 @@ import org.apache.lucene.util.ByteBlockPool.DirectAllocator;
  * (Map&lt;BytesRef,int&gt;) storing the hashed bytes efficiently in continuous storage. The mapping
  * to the id is encapsulated inside {@link BytesRefHash} and is guaranteed to be increased for each
  * added {@link BytesRef}.
+ * 
+ * [cryo] BytesRefHash 类的作用：实现要添加的 bytes 数组到 termID 的快速映射，快速判断要添加的 term 之前是否存在
  *
  * <p>Note: The maximum capacity {@link BytesRef} instance passed to {@link #add(BytesRef)} must not
  * be longer than {@link ByteBlockPool#BYTE_BLOCK_SIZE}-2. The internal storage is limited to 2GB

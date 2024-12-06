@@ -39,7 +39,6 @@ import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -80,6 +79,11 @@ final class IndexingChain implements Accountable {
   // NOTE: I tried using Hash Map<String,PerField>
   // but it was ~2% slower on Wiki and Geonames with Java
   // 1.7.0_25:
+  /**
+   * [cryo] fieldHash 用于快速查找一个 field 对应的 PerField 对象(避免重复创建和销毁 PerField 对象)
+   *        fields 用于存储当前 Document 中所有出现过的 PerFieldInfo(去重！)
+   *        docFields 用于存储专属于当前 Document 的 PerFields（不去重）
+   */
   private PerField[] fieldHash = new PerField[2];
   private int hashMask = 1;
 
@@ -565,11 +569,13 @@ final class IndexingChain implements Accountable {
     //[cryo] 这里分成两个阶段来进行处理，在第一阶段找到/存储域处理对象，目前看来有这样两个原因：
     //[cryo] 1. 一个线程可以连续处理多个文档，而每个文档的域和处理方式大致相同，所以复用+缓存的方式比每次创建更高效
     //[cryo] 2.一个文档中一个域是可以同时存储多个值的，而一个多值的域需要同时处理(因为 tokenStream 需要复用)
-    termsHash.startDocument();
-    startStoredFields(docID);   //[cryo: 没什么大用，跟文档处理有关，不用理会]
+    //TermsHash: Writes postings and term vectors
+    termsHash.startDocument();  //状态重置: TermVectorsConsumer中对应的函数会 reset 处理器数组
+    startStoredFields(docID);   //文档缓存 & flush 写入相关
     try {
       // 1st pass over doc fields – verify that doc schema matches the index schema
       // build schema for each unique doc field
+      //[cryo]可以认为第一个pass其实就是处理并存储一个 Document 中所有的 Field(FieldHash,Fields,DocFields,PerField)
       for (IndexableField field : document) {
         IndexableFieldType fieldType = field.fieldType();
         final boolean isReserved = field.getClass() == ReservedField.class;
@@ -590,7 +596,7 @@ final class IndexingChain implements Accountable {
           pf.reset(docID);
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
-        docFields[docFieldIdx++] = pf;    //[cryo] 这里保存每一篇文档自己的 fields 数组
+        docFields[docFieldIdx++] = pf;    
         updateDocFieldSchema(field.name(), pf.schema, fieldType);
       }
       // For each field, if it's the first time we see this field in this segment,
@@ -600,6 +606,7 @@ final class IndexingChain implements Accountable {
       for (int i = 0; i < fieldCount; i++) {
         PerField pf = fields[i];
         if (pf.fieldInfo == null) {
+          //[cryo] 这里初始化 FieldInfo 是一段核心逻辑
           initializeFieldInfo(pf);
         } else {
           pf.schema.assertSameSchema(pf.fieldInfo);
@@ -608,9 +615,11 @@ final class IndexingChain implements Accountable {
 
       // 2nd pass over doc fields – index each field
       // also count the number of unique fields indexed with postings
+      //[cryo] 第二阶段：索引文档中的每一个域（核心逻辑）
       docFieldIdx = 0;
       for (IndexableField field : document) {
-        //[cryo] 从这里开始，对每一个 field 开始建立倒排索引，是一个核心逻辑
+        //[cryo] 从这里开始，对每一个 field 开始建立倒排索引
+        // 12/6 重读 AddDocument 暂时到这里
         if (processField(docID, field, docFields[docFieldIdx])) {
           fields[indexedFieldCount] = docFields[docFieldIdx];
           indexedFieldCount++;
@@ -903,6 +912,8 @@ final class IndexingChain implements Accountable {
       if (sorter == null) {
         throw new IllegalStateException("Cannot sort index with sort order " + sortField);
       }
+      //观察函数的第二个实参 0 和频繁出现的 emptyXxxx，加之没有接收/使用 getDocComparator 的返回值
+      //可以这里真正核心的语句是 if-throw 语句，也就是验证 field 的 dvType 的值是否正确
       sorter.getDocComparator(
           new DocValuesLeafReader() {
             @Override
@@ -1100,7 +1111,7 @@ final class IndexingChain implements Accountable {
     // Lazy init'd:
     NormValuesWriter norms;
 
-    // reused
+    // reused     [cryo]TokenStream 是复用的
     TokenStream tokenStream;
     private final InfoStream infoStream;
     private final Analyzer analyzer;
@@ -1434,6 +1445,9 @@ final class IndexingChain implements Accountable {
    * current document with the corresponding FieldInfo (FieldInfo is built on a first document in
    * the segment where we encounter this field). If there is inconsistency, we raise an error. This
    * ensures that a field has the same data structures across all documents.
+   * 
+   * [cryo] 阅读注释可以知道，FieldSchema 是保存了当前文档每个域的规范/格式，
+   * 当处理完文档后，会将当前文档的 FieldSchema 与段的 FieldInfo 进行比对来确保所有所有文档相同域的格式相同
    */
   private static final class FieldSchema {
     private final String name;

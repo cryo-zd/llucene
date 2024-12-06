@@ -249,6 +249,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
           Iterable<? extends IndexableField> doc = iterator.next();
           if (parentField != null) {
             if (iterator.hasNext() == false) {
+              //[cryo]暂时略过不研究
               doc = addParentField(doc, parentField);
             }
           }
@@ -258,7 +259,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
           // document, so the counter will be "wrong" in that case, but
           // it's very hard to fix (we can't easily distinguish aborting
           // vs non-aborting exceptions):
-          reserveOneDoc();
+          reserveOneDoc();  //[cryo]非核心，用于保证 pendingNumDocs <= IndexWriter.maxNumDocs
           try {
             //[cryo] 核心逻辑，从这里开始进入一篇文档的索引建立过程
             indexingChain.processDocument(numDocsInRAM++, doc);
